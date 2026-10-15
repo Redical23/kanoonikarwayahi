@@ -21,6 +21,14 @@ const PUBLIC_PATHS = [
 // Paths that logged-in users should NOT be able to visit
 const AUTH_ONLY_PATHS = ['/Login', '/Register'];
 
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Must match the cookie name set in route.js
+// On Vercel (HTTPS) NextAuth uses __Secure- prefix; on localhost it doesn't
+const COOKIE_NAME = isProduction
+  ? '__Secure-next-auth.session-token'
+  : 'next-auth.session-token';
+
 export async function middleware(req) {
   const { pathname } = req.nextUrl;
 
@@ -29,11 +37,14 @@ export async function middleware(req) {
     return NextResponse.next();
   }
 
-  const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
+  const token = await getToken({
+    req,
+    secret: process.env.NEXTAUTH_SECRET,
+    cookieName: COOKIE_NAME,
+  });
 
   // --- Unauthenticated user trying to access a protected route ---
   if (!token) {
-    // Preserve where they were trying to go so we can redirect back after login
     const loginUrl = new URL('/Login', req.url);
     loginUrl.searchParams.set('callbackUrl', req.nextUrl.pathname);
     return NextResponse.redirect(loginUrl);
@@ -41,23 +52,14 @@ export async function middleware(req) {
 
   // --- Logged-in user trying to visit Login/Register pages ---
   if (AUTH_ONLY_PATHS.includes(pathname)) {
-    return NextResponse.redirect(new URL(`/pruser/${token.email}`, req.url));
+    return NextResponse.redirect(new URL('/pruser/homepage', req.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  /*
-   * Only run middleware on app routes — skip:
-   *  - _next/static  (Next.js static files)
-   *  - _next/image   (image optimisation)
-   *  - favicon.ico
-   *  - public assets (png, jpg, svg, …)
-   *  - api routes (NextAuth handles its own auth)
-   */
   matcher: [
     '/((?!_next/static|_next/image|favicon.ico|api/|.*\\.(?:png|jpg|jpeg|gif|svg|ico|css|js|webp|woff2?)$).*)'
   ],
 };
-

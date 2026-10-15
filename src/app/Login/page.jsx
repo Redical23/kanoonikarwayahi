@@ -45,8 +45,8 @@ function LoginForm() {
         }
       } else {
         toast.success("Login successful!")
-        // Go to where they originally wanted to go, or their profile
-        const destination = searchParams.get("callbackUrl") || `/pruser/${credentials.email}`
+        // Go directly to homepage — session already has the email
+        const destination = searchParams.get("callbackUrl") || "/pruser/homepage"
         router.push(destination)
       }
     } catch (err) {

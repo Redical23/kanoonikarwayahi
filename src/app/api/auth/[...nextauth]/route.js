@@ -5,6 +5,15 @@ import bcrypt from "bcryptjs";
 import dbconnect from "../../../lib/dbConnect";
 import User from "../../../models/User";
 
+// Auto-detect the correct URL: works on localhost AND Vercel without manual NEXTAUTH_URL
+const getBaseUrl = () => {
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return "http://localhost:3000";
+};
+
+const isProduction = process.env.NODE_ENV === "production";
+
 const handler = NextAuth({
   providers: [
     // Google Authentication
@@ -92,13 +101,33 @@ const handler = NextAuth({
   // Tell NextAuth where your custom pages live
   pages: {
     signIn: "/Login",
-    error: "/Login", // auth errors redirect here
+    error: "/Login",
   },
 
   session: {
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60, // 7 days
   },
+
+  // Fix cookie so it works correctly on both localhost (http) and Vercel (https)
+  cookies: {
+    sessionToken: {
+      name: isProduction
+        ? "__Secure-next-auth.session-token"
+        : "next-auth.session-token",
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: isProduction,
+      },
+    },
+  },
+
+  // Use auto-detected URL
+  ...(process.env.VERCEL_URL && !process.env.NEXTAUTH_URL
+    ? { url: getBaseUrl() }
+    : {}),
 });
 
 export { handler as GET, handler as POST };
