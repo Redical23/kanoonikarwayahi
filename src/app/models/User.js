@@ -51,8 +51,8 @@ const UserSchema = new mongoose.Schema(
     ],
     password: {
       type: String,
-      required: [true, "Password is required!"],
-      index: true, 
+      // NOTE: not required for OAuth users (Google sign-in)
+      select: false, // Never return password hash in queries unless explicitly asked for
     },
     bookmarks: {
       type: [String],
